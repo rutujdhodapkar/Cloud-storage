@@ -72,19 +72,24 @@ def files_page():
 
 @app.route('/log_device', methods=['POST'])
 def log_device():
-    data = request.get_json() or {}
-    uname = data.get('username','unknown')
-    os_info = data.get('os','')
-    ip = data.get('ip', request.remote_addr)
-    dev_time = data.get('time','')
-    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    import csv, os
+    data = request.get_json()
+    ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    # fallback to external v4 or 'device'
+    uname = data.get('externalIPv4') or 'device'
     fname = f"{sanitize_filename(uname)}_{ts}.csv"
-    path = os.path.join(LOG_DIR, fname)
+    os.makedirs('device_logs', exist_ok=True)
+    path = os.path.join('device_logs', fname)
     with open(path, 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
-        w.writerow(['username','os','ip','device_time','server_time'])
-        w.writerow([uname, os_info, ip, dev_time, datetime.now().isoformat()])
-    return jsonify({'status':'logged'})
+        w.writerow(['internalIPs','externalIPv4','externalIPv6','os','browser','serverTime'])
+        w.writerow([
+          ";".join(data.internalIPs or []),
+          data.externalIPv4, data.externalIPv6,
+          data.os, data.browser,
+          datetime.utcnow().isoformat()
+        ])
+    return jsonify(status='logged')
 
 @app.route('/logs')
 def view_logs():
