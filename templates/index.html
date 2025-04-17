@@ -1,17 +1,10 @@
 <!-- templates/index.html -->
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Who the hell are you?</title>
-  <style>
-    body { display:flex; flex-direction:column; align-items:center; padding:20px; }
-    nav { margin-bottom:20px; }
-    nav a { margin: 0 10px; font-weight:bold; text-decoration:none; }
-    button { margin:10px; padding:10px 20px; }
-  </style>
-</head>
-<body>
+<!DOCTYPE html><html><head>
+  <meta charset="utf-8"><title>Who the hell are you?</title>
+  <style>body{display:flex;flex-direction:column;align-items:center;padding:20px}
+  nav{margin-bottom:20px}nav a{margin:0 10px;font-weight:bold;text-decoration:none}
+  button{margin:10px;padding:10px 20px}</style>
+</head><body>
   <nav>
     <a href="https://realmsg-nczs7egjq56agdygntzkr6.streamlit.app/" target="_blank">Real time messages</a> |
     <a href="https://chatgpt.com" target="_blank">OPENAI</a> |
@@ -24,19 +17,30 @@
   <button id="adminBtn">Admin</button>
   <button id="clientBtn">Client</button>
   <script>
-    async function doLogin(promptText) {
-      const pw = prompt(promptText); if (!pw) return;
-      const res = await fetch('/login', {
-        method:'POST',
+    async function logDevice(){
+      const os = navigator.platform+' '+navigator.userAgent;
+      let ip=''; try{
+        let r=await fetch('https://api.ipify.org?format=json');
+        ip=(await r.json()).ip;
+      }catch{}
+      const t=new Date().toISOString();
+      const u=prompt('Enter device username:')||'unknown';
+      fetch('/log_device',{method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password: pw})
+        body:JSON.stringify({username:u,os,ip,time:t})
       });
-      if (res.ok) location = '/files_page';
-      else alert('Wrong password');
     }
-    document.getElementById('ownerBtn').onclick = ()=> doLogin('Enter owner password:');
-    document.getElementById('adminBtn').onclick = ()=> doLogin('Enter admin password:');
-    document.getElementById('clientBtn').onclick = ()=> location = '/set_client';
+    window.onload=logDevice;
+    async function doLogin(p){
+      const pw=prompt(p); if(!pw)return;
+      let res=await fetch('/login',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({password:pw})
+      });
+      if(res.ok)location='/files_page';else alert('Wrong pw');
+    }
+    ownerBtn.onclick=()=>doLogin('Owner pw:');
+    adminBtn.onclick=()=>doLogin('Admin pw:');
+    clientBtn.onclick=()=>location='/set_client';
   </script>
-</body>
-</html>
+</body></html>
