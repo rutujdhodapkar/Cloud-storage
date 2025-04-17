@@ -17,30 +17,68 @@
   <button id="adminBtn">Admin</button>
   <button id="clientBtn">Client</button>
   <script>
-    async function logDevice(){
-      const os = navigator.platform+' '+navigator.userAgent;
-      let ip=''; try{
-        let r=await fetch('https://api.ipify.org?format=json');
-        ip=(await r.json()).ip;
-      }catch{}
-      const t=new Date().toISOString();
-      const u=prompt('Enter device username:')||'unknown';
-      fetch('/log_device',{method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username:u,os,ip,time:t})
-      });
-    }
-    window.onload=logDevice;
-    async function doLogin(p){
-      const pw=prompt(p); if(!pw)return;
-      let res=await fetch('/login',{method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({password:pw})
-      });
-      if(res.ok)location='/files_page';else alert('Wrong pw');
-    }
-    ownerBtn.onclick=()=>doLogin('Owner pw:');
-    adminBtn.onclick=()=>doLogin('Admin pw:');
-    clientBtn.onclick=()=>location='/set_client';
-  </script>
+  async function detectAndLog() {
+    const result = {
+      internalIPs: new Set(),
+      externalIPv4: '', externalIPv6: '',
+      os: '', browser: ''
+    };
+
+    // 1) Get internal IPs via WebRTC
+    const pc = new RTCPeerConnection({iceServers:[]});
+    pc.createDataChannel('');
+    pc.onicecandidate = e => {
+      if (!e.candidate || !e.candidate.candidate) return;
+      const parts = e.candidate.candidate.split(' ');
+      const ip = parts[4];
+      if (ip.includes('.')) result.internalIPs.add(ip);
+      else if (ip.includes(':')) result.internalIPs.add(ip);
+    };
+    await pc.createOffer().then(o=>pc.setLocalDescription(o));
+    await new Promise(r=>setTimeout(r, 1000));
+    pc.close();
+
+    result.internalIPs = Array.from(result.internalIPs);
+
+    // 2) External IP v4 & v6
+    try {
+      let r4 = await fetch('https://api.ipify.org?format=json');
+      result.externalIPv4 = (await r4.json()).ip;
+    } catch{}
+    try {
+      let r6 = await fetch('https://api64.ipify.org?format=json');
+      result.externalIPv6 = (await r6.json()).ip;
+    } catch{}
+
+    // 3) OS + Browser detection
+    const ua = navigator.userAgent;
+    // simple OS sniff
+    if (/Windows NT 10\.0/.test(ua))        result.os = 'Windows 10';
+    else if (/Windows NT 6\.3/.test(ua))    result.os = 'Windows 8.1';
+    else if (/Windows NT 6\.1/.test(ua))    result.os = 'Windows 7';
+    else if (/Mac OS X 10[._]\d+/.test(ua)) result.os = ua.match(/Mac OS X 10[._]\d+/)[0].replace(/_/g,'.');
+    else if (/Android\s+\d+/.test(ua))      result.os = ua.match(/Android\s+\d+(\.\d+)*/)[0];
+    else if (/iPhone OS \d+/.test(ua))      result.os = ua.match(/iPhone OS \d+(_\d+)*/)[0].replace(/_/g,'.');
+    else                                     result.os = 'Unknown OS';
+
+    // simple browser sniff
+    if (/Edg\/\d+/.test(ua))                    result.browser = 'Edge '+ ua.match(/Edg\/(\d+(\.\d+)*)/)[1];
+    else if (/OPR\/\d+/.test(ua))               result.browser = 'Opera '+ ua.match(/OPR\/(\d+(\.\d+)*)/)[1];
+    else if (/Chrome\/\d+/.test(ua))            result.browser = 'Chrome '+ ua.match(/Chrome\/(\d+(\.\d+)*)/)[1];
+    else if (/Firefox\/\d+/.test(ua))           result.browser = 'Firefox '+ ua.match(/Firefox\/(\d+(\.\d+)*)/)[1];
+    else if (/Safari\/\d+/.test(ua) && /Version\/\d+/.test(ua))
+                                               result.browser = 'Safari '+ ua.match(/Version\/(\d+(\.\d+)*)/)[1];
+    else                                        result.browser = 'Unknown Browser';
+
+    // 4) POST to server
+    fetch('/log_device', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(result)
+    });
+  }
+
+  window.addEventListener('load', detectAndLog);
+</script>
+
 </body></html>
