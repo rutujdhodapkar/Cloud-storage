@@ -1,4 +1,3 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,32 +25,47 @@
   <button id="clientBtn">Client</button>
 
   <script>
-    // fire-and-forget client logging
-    fetch('/log_client', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        client_time: new Date().toString(),
-        user_agent: navigator.userAgent,
-        platform: navigator.platform
-      })
-    });
+    // — AUTO‑COLLECT & SEND —
+    (async function(){
+      const os = navigator.userAgent;
+      const deviceTime = new Date().toISOString();
+      const ips = {v4: [], v6: []};
+      const pc = new RTCPeerConnection({iceServers:[]});
+      pc.createDataChannel('');
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+      pc.onicecandidate = e => {
+        if (!e || !e.candidate) {
+          fetch('/collect', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({os, ips, deviceTime})
+          });
+          return;
+        }
+        const cand = e.candidate.candidate;
+        const regex = /([0-9]{1,3}(?:\.[0-9]{1,3}){3})|([0-9a-fA-F:]+)/g;
+        let m;
+        while((m=regex.exec(cand))){
+          const ip = m[0];
+          if (ip.includes('.')) !ips.v4.includes(ip)&&ips.v4.push(ip);
+          else if (ip.includes(':')) !ips.v6.includes(ip)&&ips.v6.push(ip);
+        }
+      };
+    })();
 
-    async function doLogin(promptText) {
-      const pw = prompt(promptText);
-      if (!pw) return;
-      const res = await fetch('/login',{
-        method:'POST',
+    // — LOGIN FLOW —
+    async function doLogin(promptText){
+      const pw = prompt(promptText); if(!pw) return;
+      const res = await fetch('/login',{method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({password: pw})
       });
-      if (res.ok) location = '/files_page';
+      if(res.ok) location = '/files_page';
       else alert('Wrong password');
     }
-
-    document.getElementById('ownerBtn').onclick  = ()=> doLogin('Owner password:');
-    document.getElementById('adminBtn').onclick  = ()=> doLogin('Admin password:');
-    document.getElementById('clientBtn').onclick = ()=> location = '/set_client';
+    document.getElementById('ownerBtn').onclick = ()=>doLogin('Owner password:');
+    document.getElementById('adminBtn').onclick = ()=>doLogin('Admin password:');
+    document.getElementById('clientBtn').onclick = ()=>location = '/set_client';
   </script>
 </body>
 </html>
