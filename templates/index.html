@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Who the hell are you?</title>
+  <style>
+    body { display:flex; flex-direction:column; align-items:center; padding:20px; }
+    nav { margin-bottom:20px; }
+    nav a { margin: 0 10px; text-decoration:none; font-weight:bold; }
+    button { margin:10px; padding:10px 20px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="https://realmsg-nczs7egjq56agdygntzkr6.streamlit.app/" target="_blank">Real time messages</a> |
+    <a href="https://chatgpt.com" target="_blank">OPENAI</a> |
+    <a href="https://copilot.microsoft.com/chats/wMXwk4qrrPCAaR4s86tsn" target="_blank">Copilot</a> |
+    <a href="https://chat.deepseek.com/" target="_blank">Deepseek</a> |
+    <a href="https://www.google.com/" target="_blank">Google</a> |
+    <a href="https://drive.google.com/drive/home" target="_blank">Google Drive</a>
+  </nav>
+
+  <button id="ownerBtn">Owner</button>
+  <button id="adminBtn">Admin</button>
+  <button id="clientBtn">Client</button>
+
+  <script>
+    async function doLogin(promptText) {
+      const pw = prompt(promptText); if (!pw) return;
+      const res = await fetch('/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({password: pw})
+      });
+      if (res.ok) location = '/files_page';
+      else alert('Wrong password, punk');
+    }
+    document.getElementById('ownerBtn').onclick = ()=> doLogin('Enter owner password:');
+    document.getElementById('adminBtn').onclick = ()=> doLogin('Enter admin password:');
+    document.getElementById('clientBtn').onclick = ()=> location = '/set_client';
+  </script>
+</body>
+</html>

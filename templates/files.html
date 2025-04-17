@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>File Vault</title>
+  <style>
+    body { padding:20px; }
+    nav { margin-bottom:20px; }
+    nav a { margin: 0 10px; text-decoration:none; font-weight:bold; }
+    #toast {
+      position: fixed; top: 20px; right: 20px;
+      background: #333; color: #fff; padding: 10px;
+      border-radius: 4px; opacity: 0; transition: opacity .5s;
+    }
+    #toast.show { opacity: 1; }
+    .delete-btn { margin-left: 10px; color: red; cursor: pointer; }
+    form { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="https://realmsg-nczs7egjq56agdygntzkr6.streamlit.app/" target="_blank">Real time messages</a> |
+    <a href="https://chatgpt.com" target="_blank">OPENAI</a> |
+    <a href="https://copilot.microsoft.com/chats/wMXwk4qrrPCAaR4s86tsn" target="_blank">Copilot</a> |
+    <a href="https://chat.deepseek.com/" target="_blank">Deepseek</a> |
+    <a href="https://www.google.com/" target="_blank">Google</a> |
+    <a href="https://drive.google.com/drive/home" target="_blank">Google Drive</a>
+  </nav>
+
+  <div id="toast"></div>
+
+  {% if role in ['admin','owner'] %}
+  <h2>Upload / Save URL</h2>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.py,.ipynb">
+    <button type="submit">Upload</button>
+  </form>
+  <form id="urlForm">
+    <input type="url" name="url" placeholder="https://example.com">
+    <button type="submit">Save URL</button>
+  </form>
+  {% endif %}
+
+  <h2>Available Files</h2>
+  <ul id="fileList"></ul>
+
+  <script>
+    const role = "{{ role }}";
+    const toast = document.getElementById('toast');
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(()=> toast.classList.remove('show'), 3000);
+    }
+
+    async function fetchFiles() {
+      const res = await fetch('/files');
+      const files = await res.json();
+      const ul = document.getElementById('fileList');
+      ul.innerHTML = '';
+      files.forEach(f => {
+        const li = document.createElement('li');
+        let html = `<a href="${f.link}" download="${f.name}">${f.name}</a>`;
+        if (role === 'owner') {
+          html += `<span class="delete-btn" data-name="${f.name}">[del]</span>`;
+        }
+        li.innerHTML = html;
+        ul.appendChild(li);
+      });
+    }
+
+    document.body.addEventListener('click', async e => {
+      if (e.target.classList.contains('delete-btn')) {
+        const name = e.target.dataset.name;
+        const res = await fetch('/delete', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({name})
+        });
+        const j = await res.json();
+        showToast(j.status==='deleted' ? 'Deleted 😉' : 'Error');
+        fetchFiles();
+      }
+    });
+
+    if (['admin','owner'].includes(role)) {
+      uploadForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const txt = await fetch('/upload',{method:'POST',body:new FormData(uploadForm)})
+                        .then(r=>r.text());
+        showToast(txt);
+        fetchFiles();
+      });
+      urlForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const txt = await fetch('/upload',{method:'POST',body:new URLSearchParams(new FormData(urlForm))})
+                        .then(r=>r.text());
+        showToast(txt);
+        fetchFiles();
+      });
+    }
+
+    fetchFiles();
+  </script>
+</body>
+</html>
