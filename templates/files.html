@@ -1,32 +1,19 @@
 <!-- templates/files.html -->
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>File Vault</title>
+<!DOCTYPE html><html><head>
+  <meta charset="utf-8"><title>File Vault</title>
   <style>
-    body { padding:20px; }
-    nav { margin-bottom:20px; }
-    nav a { margin: 0 10px; font-weight:bold; text-decoration:none; }
-    #toast {
-      position: fixed; top: 20px; right: 20px;
-      background: #333; color: #fff; padding: 10px;
-      border-radius: 4px; opacity: 0; transition: opacity .5s;
-    }
-    #toast.show { opacity: 1; }
-    .delete-btn, .rename-btn { margin-left: 8px; cursor: pointer; }
-    .rename-btn { color: orange; }
-    form { margin-bottom: 20px; }
-    #drop-area {
-      border: 2px dashed #666; padding: 20px; text-align: center;
-      margin-bottom: 10px; cursor: pointer;
-    }
-    #drop-area.highlight { background: #f0f0f0; }
-    .token-section { margin-top: 30px; }
-    #refreshBtn { margin-bottom: 20px; }
+    body{padding:20px}nav{margin-bottom:20px}nav a{margin:0 10px;font-weight:bold;text-decoration:none}
+    #toast{position:fixed;top:20px;right:20px;background:#333;color:#fff;padding:10px;border-radius:4px;opacity:0;transition:opacity .5s}
+    #toast.show{opacity:1}
+    .delete-btn,.rename-btn{margin-left:8px;cursor:pointer}
+    .rename-btn{color:orange}
+    form{margin-bottom:20px}
+    #drop-area{border:2px dashed #666;padding:20px;text-align:center;margin-bottom:10px;cursor:pointer}
+    #drop-area.highlight{background:#f0f0f0}
+    .token-section{margin-top:30px}
+    #refreshBtn{margin-bottom:20px}
   </style>
-</head>
-<body>
+</head><body>
   <nav>
     <a href="https://realmsg-nczs7egjq56agdygntzkr6.streamlit.app/" target="_blank">Real time messages</a> |
     <a href="https://chatgpt.com" target="_blank">OPENAI</a> |
@@ -34,138 +21,82 @@
     <a href="https://chat.deepseek.com/" target="_blank">Deepseek</a> |
     <a href="https://www.google.com/" target="_blank">Google</a> |
     <a href="https://drive.google.com/drive/home" target="_blank">Google Drive</a>
+    {% if role=='owner' %} | <a href="/logs">View Logs</a>{% endif %}
   </nav>
-
   <div id="toast"></div>
-
   <button id="refreshBtn">Refresh</button>
-
   {% if role in ['admin','owner'] %}
-  <h2>Upload / Save URL</h2>
-  <div id="drop-area">Drag &amp; drop file here or click to browse</div>
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="file" id="fileInput" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.py,.ipynb" style="display:none;">
-    <input type="text" name="custom_name" placeholder="Custom filename.ext">
-    <button type="submit">Upload</button>
-  </form>
-  <form id="urlForm">
-    <input type="url" name="url" placeholder="https://example.com">
-    <button type="submit">Save URL</button>
-  </form>
-  <div class="token-section">
-    <h2>Dropbox Token</h2>
-    <a href="https://www.dropbox.com/developers/apps/info/kw1ztfsray6hj0l" target="_blank">
-      <button>Get Token</button>
-    </a>
-    <form id="tokenForm">
-      <input type="text" name="token" placeholder="Paste new access token" style="width:300px;">
-      <button type="submit">Set Token</button>
+    <h2>Upload / Save URL</h2>
+    <div id="drop-area">Drag & drop file here or click to browse</div>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.py,.ipynb" style="display:none">
+      <input type="text" name="custom_name" placeholder="Custom filename.ext">
+      <button>Upload</button>
     </form>
-  </div>
+    <form id="urlForm">
+      <input type="url" name="url" placeholder="https://example.com"><button>Save URL</button>
+    </form>
+    <div class="token-section">
+      <h2>Dropbox Token</h2>
+      <a href="https://www.dropbox.com/developers/apps/info/kw1ztfsray6hj0l" target="_blank"><button>Get Token</button></a>
+      <form id="tokenForm">
+        <input type="text" name="token" placeholder="Paste new access token" style="width:300px">
+        <button>Set Token</button>
+      </form>
+    </div>
   {% endif %}
-
   <h2>Available Files</h2>
   <ul id="fileList"></ul>
 
   <script>
-    const role = "{{ role }}";
-    const toast = document.getElementById('toast');
-    function showToast(msg) {
-      toast.textContent = msg;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    // Drag & Drop
-    const dropArea = document.getElementById('drop-area');
-    const fileInput = document.getElementById('fileInput');
-    ;['dragenter','dragover'].forEach(evt =>
-      dropArea.addEventListener(evt, e => {
-        e.preventDefault(); dropArea.classList.add('highlight');
-      }));
-    ;['dragleave','drop'].forEach(evt =>
-      dropArea.addEventListener(evt, e => {
-        e.preventDefault(); dropArea.classList.remove('highlight');
-      }));
-    dropArea.addEventListener('drop', e => {
-      const files = e.dataTransfer.files;
-      if (files.length) fileInput.files = files;
-    });
-    dropArea.addEventListener('click', ()=> fileInput.click());
-
-    // Fetch & render
-    async function fetchFiles() {
-      const res = await fetch('/files');
-      const files = await res.json();
-      const ul = document.getElementById('fileList');
-      ul.innerHTML = '';
-      files.forEach(f => {
-        const li = document.createElement('li');
-        let html = `<a href="${f.link}" download="${f.name}">${f.name}</a>`;
-        if (['admin','owner'].includes(role)) {
-          html += `<span class="rename-btn" data-name="${f.name}">[rename]</span>`;
-        }
-        if (role === 'owner') {
-          html += `<span class="delete-btn" data-name="${f.name}">[del]</span>`;
-        }
-        li.innerHTML = html;
-        ul.appendChild(li);
+    const role="{{ role }}",toast=document.getElementById('toast');
+    function showToast(m){toast.textContent=m;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000)}
+    // drag & drop
+    const dropA=document.getElementById('drop-area'),fIn=document.getElementById('fileInput');
+    ['dragenter','dragover'].forEach(e=>dropA.addEventListener(e,ev=>{ev.preventDefault();dropA.classList.add('highlight')}));
+    ['dragleave','drop'].forEach(e=>dropA.addEventListener(e,ev=>{ev.preventDefault();dropA.classList.remove('highlight')}));
+    dropA.addEventListener('drop',e=>{fIn.files=e.dataTransfer.files;});
+    dropA.addEventListener('click',()=>fIn.click());
+    // fetch & render
+    async function fetchFiles(){
+      let fs=await (await fetch('/files')).json(),ul=document.getElementById('fileList');
+      ul.innerHTML='';
+      fs.forEach(f=>{
+        let li=document.createElement('li'),html=`<a href="${f.link}" download="${f.name}">${f.name}</a>`;
+        if(['admin','owner'].includes(role)) html+=`<span class="rename-btn" data-name="${f.name}">[rename]</span>`;
+        if(role=='owner') html+=`<span class="delete-btn" data-name="${f.name}">[del]</span>`;
+        li.innerHTML=html;ul.appendChild(li);
       });
     }
-
-    document.getElementById('refreshBtn').addEventListener('click', fetchFiles);
-
-    // Delegated actions
-    document.body.addEventListener('click', async e => {
-      if (e.target.classList.contains('delete-btn')) {
-        const name = e.target.dataset.name;
-        const j = await fetch('/delete', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({name})
-        }).then(r=>r.json());
-        showToast(j.status==='deleted'?'Deleted 😉':'Error');
-        fetchFiles();
+    document.getElementById('refreshBtn').onclick=fetchFiles;
+    document.body.addEventListener('click',async e=>{
+      if(e.target.classList.contains('delete-btn')){
+        let n=e.target.dataset.name,j=await (await fetch('/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})})).json();
+        showToast(j.status==='deleted'?'Deleted 😉':'Error');fetchFiles();
       }
-      if (e.target.classList.contains('rename-btn')) {
-        const old = e.target.dataset.name;
-        const neu = prompt('New filename', old);
-        if (neu && neu!==old) {
-          const j = await fetch('/rename', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({old, new: neu})
-          }).then(r=>r.json());
-          showToast(j.status==='renamed'?'Renamed 👍':'Error');
-          fetchFiles();
+      if(e.target.classList.contains('rename-btn')){
+        let old=e.target.dataset.name,newn=prompt('New filename',old);
+        if(newn&&newn!==old){
+          let j=await (await fetch('/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old, new:newn})})).json();
+          showToast(j.status==='renamed'?'Renamed 👍':'Error');fetchFiles();
         }
       }
     });
-
-    // Upload, URL & token
-    if (['admin','owner'].includes(role)) {
-      uploadForm.addEventListener('submit', async e => {
-        e.preventDefault();
-        const txt = await fetch('/upload',{method:'POST',body:new FormData(uploadForm)})
-                        .then(r=>r.text());
-        showToast(txt); fetchFiles();
+    if(['admin','owner'].includes(role)){
+      document.getElementById('uploadForm').addEventListener('submit',async e=>{
+        e.preventDefault();let t=await (await fetch('/upload',{method:'POST',body:new FormData(uploadForm)})).text();
+        showToast(t);fetchFiles();
       });
-      urlForm.addEventListener('submit', async e => {
-        e.preventDefault();
-        const txt = await fetch('/upload',{method:'POST',body:new URLSearchParams(new FormData(urlForm))})
-                        .then(r=>r.text());
-        showToast(txt); fetchFiles();
+      document.getElementById('urlForm').addEventListener('submit',async e=>{
+        e.preventDefault();let t=await (await fetch('/upload',{method:'POST',body:new URLSearchParams(new FormData(urlForm))})).text();
+        showToast(t);fetchFiles();
       });
-      tokenForm.addEventListener('submit', async e => {
-        e.preventDefault();
-        const token = tokenForm.token.value.trim();
-        const j = await fetch('/set_token',{
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({token})
-        }).then(r=>r.json());
+      document.getElementById('tokenForm').addEventListener('submit',async e=>{
+        e.preventDefault();let tok=tokenForm.token.value.trim(),
+          j=await (await fetch('/set_token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok})})).json();
         showToast(j.status==='token updated'?'Token updated 🔑':'Error');
       });
     }
-
     fetchFiles();
   </script>
-</body>
-</html>
+</body></html>
