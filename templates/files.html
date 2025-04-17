@@ -6,7 +6,7 @@
   <style>
     body { padding:20px; }
     nav { margin-bottom:20px; }
-    nav a { margin: 0 10px; text-decoration:none; font-weight:bold; }
+    nav a { margin: 0 10px; font-weight:bold; text-decoration:none; }
     #toast {
       position: fixed; top: 20px; right: 20px;
       background: #333; color: #fff; padding: 10px;
@@ -15,6 +15,7 @@
     #toast.show { opacity: 1; }
     .delete-btn { margin-left: 10px; color: red; cursor: pointer; }
     form { margin-bottom: 20px; }
+    .token-section { margin-top: 30px; }
   </style>
 </head>
 <body>
@@ -39,6 +40,17 @@
     <input type="url" name="url" placeholder="https://example.com">
     <button type="submit">Save URL</button>
   </form>
+
+  <div class="token-section">
+    <h2>Dropbox Token</h2>
+    <a href="https://www.dropbox.com/developers/apps/info/kw1ztfsray6hj0l" target="_blank">
+      <button>Get Token</button>
+    </a>
+    <form id="tokenForm">
+      <input type="text" name="token" placeholder="Paste new access token" style="width: 300px;">
+      <button type="submit">Set Token</button>
+    </form>
+  </div>
   {% endif %}
 
   <h2>Available Files</h2>
@@ -59,7 +71,7 @@
       const ul = document.getElementById('fileList');
       ul.innerHTML = '';
       files.forEach(f => {
-        const li = document.createElement('li');
+        let li = document.createElement('li');
         let html = `<a href="${f.link}" download="${f.name}">${f.name}</a>`;
         if (role === 'owner') {
           html += `<span class="delete-btn" data-name="${f.name}">[del]</span>`;
@@ -69,6 +81,7 @@
       });
     }
 
+    // Deletion
     document.body.addEventListener('click', async e => {
       if (e.target.classList.contains('delete-btn')) {
         const name = e.target.dataset.name;
@@ -83,6 +96,7 @@
       }
     });
 
+    // Upload & URL
     if (['admin','owner'].includes(role)) {
       uploadForm.addEventListener('submit', async e => {
         e.preventDefault();
@@ -97,6 +111,19 @@
                         .then(r=>r.text());
         showToast(txt);
         fetchFiles();
+      });
+
+      // Token form
+      tokenForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const token = tokenForm.token.value.trim();
+        const res = await fetch('/set_token', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({token})
+        });
+        const j = await res.json();
+        showToast(j.status==='token updated' ? 'Token updated 🔑' : 'Error');
       });
     }
 
