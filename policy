@@ -1,0 +1,39 @@
+Effective Date: April 17, 2025
+App Name: File Vault
+
+1. Purpose
+File Vault is a simple tool designed exclusively for personal and legal file access, sharing, and management through Dropbox. It is intended for private, authorized users only.
+
+2. Data Handling
+Uploaded files are stored directly in the linked Dropbox account.
+
+No files are stored on this server or exposed to unauthorized parties.
+
+We do not collect personal data, analytics, or tracking cookies.
+
+Dropbox access tokens are stored locally and securely in a non-public JSON file (dropbox_token.json) and never shared.
+
+3. User Roles
+Client: Can view and download allowed files only.
+
+Admin: Can upload, view, and manage files.
+
+Owner: Has full rights, including deleting files and managing access tokens.
+
+All actions are logged internally and are not visible to other users.
+
+4. Legal Use Only
+This tool is strictly intended for legal and non-malicious use:
+
+No pirated, illegal, or harmful content may be uploaded or shared.
+
+Violation of these terms may result in immediate and permanent restriction of access.
+
+5. Security
+This app does not expose source code (e.g., app.py) to public users.
+
+Dropbox tokens are encrypted and only editable by authorized roles.
+
+6. Changes
+We reserve the right to modify this policy at any time without notice. Continued use of File Vault implies agreement with the current version of this policy.
+
